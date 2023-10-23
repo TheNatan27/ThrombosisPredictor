@@ -4,81 +4,99 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
+import joblib
+import numpy as np
+import os
 
+class ThrombosisPredictor:
 
-excelfile = pd.read_csv('files/diag_surg_complic.csv')
-excel_data = excelfile[[
-    'time_diag_surg',
-    'bleeding',
-    'heartburn',
-    'fever',
-    'infection',
-    'pain',
-    'nausea',
-    'confusion',
-    'high_blood_pressure',
-    'shock',
-    'thrombosis',
-    'number_of_complications'
-    ]]
+    def __init__(self) -> None:
+        answer = input('Would you like to train a new model? Y/n \n')
+        if answer == 'Y' or answer == 'y':
+            X_train, X_test, Y_train, Y_test = self.processRawData()
+            maxIteration = int(input('Please enter maximum iteration number: \n'))
+            model = self.fitModel(X_train, X_test, Y_train, Y_test, maxIteration)
+            self.predictExample(model)
+            saveOrNo = input('Would you like to save the model? Y/n \n')
+            if saveOrNo == 'Y' or saveOrNo == 'y':
+                modelname = input('Enter a name for your model: \n')
+                joblib.dump(model, filename=modelname+'.sav')
+        else:
+            filename = input('Please enter the file name of a saved model: \n')
+            loaded_model = joblib.load(filename)
+            self.predictExample(loaded_model)
 
-result_data = excel_data.iloc[:,0:10]
-health_data = excel_data.iloc[:,10]
+    def processRawData(self):
+        excelfile = pd.read_csv('files/diag_surg_complic.csv')
+        excel_data = excelfile[[
+            'time_diag_surg',
+            'bleeding',
+            'heartburn',
+            'fever',
+            'infection',
+            'pain',
+            'nausea',
+            'confusion',
+            'high_blood_pressure',
+            'shock',
+            'thrombosis',
+            'number_of_complications']]
 
-X_train, X_test, Y_train, Y_test = train_test_split(
-    health_data,
-    result_data,
-    test_size=0.2
-    )
+        result_data = excel_data.iloc[:,0:10]
+        health_data = excel_data.iloc[:,10]
 
+        X_train, X_test, Y_train, Y_test = train_test_split(
+            health_data,
+            result_data,
+            test_size=0.2
+            )
+        return X_train, X_test, Y_train, Y_test
+          
+    def fitModel(self, X_train, X_test, Y_train, Y_test, maxIteration: int) -> MLPClassifier:
+        mlp = MLPClassifier(hidden_layer_sizes=(250, 200, 150), max_iter=maxIteration, alpha=1e-4,
+                    solver='lbfgs', verbose=10, activation='logistic', random_state=1,
+                    learning_rate_init=.1, learning_rate='adaptive')
 
-mlp = MLPClassifier(hidden_layer_sizes=(250, 200, 150 ), max_iter=10000, alpha=1e-4,
-                    solver='lbfgs', verbose=10, activation='relu', random_state=1,
-                    learning_rate_init=.1)
+        temp = X_train
+        X_train = Y_train
+        Y_train = temp
 
-temp = X_train
-X_train = Y_train
-Y_train = temp
+        temp = X_test
+        X_test = Y_test
+        Y_test = temp
 
-temp = X_test
-X_test = Y_test
-Y_test = temp
+        mlp.fit(X_train, Y_train)
 
-print('----------------------------------------------')
-print(X_train.shape)
-print(Y_train.shape)
-print('----------------------------------------------')
+        y_prediction = mlp.predict(X_test)
 
-mlp.fit(X_train, Y_train)
+        print("Training set score: %f" % mlp.score(X_train, Y_train))
+        print("Test set score: %f" % mlp.score(X_train, Y_train))
 
-y_prediction = mlp.predict(X_test)
+        accuracy = accuracy_score(Y_test, y_prediction)
+        print('Accuracy: %f' % accuracy)
 
-print("Training set score: %f" % mlp.score(X_train, Y_train))
-print("Test set score: %f" % mlp.score(X_train, Y_train))
+        conf = confusion_matrix(Y_test, y_prediction)
 
-accuracy = accuracy_score(Y_test, y_prediction)
-print('Accuracy: %f' % accuracy)
+        print(conf)
+        
+        return mlp
+  
+    def predictExample(self, mlp: MLPClassifier):
+        print('----------------------------------------------')
 
-conf = confusion_matrix(Y_test, y_prediction)
+        print('Example prediction:')
+        arrayLike = [
+            [126,0,0,1,1,1,0,0,1,0],
+            [40,0,1,0,0,1,0,0,1,0],
+            [3,0,0,1,0,0,0,0,1,0],
+            [32,0,0,0,1,0,0,0,0,0],
+            [162,0,0,1,0,1,0,0,0,0],
+            [25,0,0,0,0,1,1,0,1,0],
+            [56,0,0,0,0,1,0,0,0,0],
+            [15,1,0,0,1,0,1,0,1,0],
+            [6,0,1,0,0,1,0,0,0,0]]
 
-print(conf)
-
-print('----------------------------------------------')
-
-print('Prediction:')
-arrayLike = [
-    [126,0,0,1,1,1,0,0,1,0],
-    [40,0,1,0,0,1,0,0,1,0],
-    [3,0,0,1,0,0,0,0,1,0],
-    [32,0,0,0,1,0,0,0,0,0],
-    [162,0,0,1,0,1,0,0,0,0],
-    [25,0,0,0,0,1,1,0,1,0],
-    [56,0,0,0,0,1,0,0,0,0],
-    [15,1,0,0,1,0,1,0,1,0],
-    [6,0,1,0,0,1,0,0,0,0]
-    ]
-
-df = pd.DataFrame(arrayLike, columns=['time_diag_surg',
+        df = pd.DataFrame(arrayLike, columns=['time_diag_surg',
                                     'bleeding',
                                     'heartburn',
                                     'fever',
@@ -88,6 +106,16 @@ df = pd.DataFrame(arrayLike, columns=['time_diag_surg',
                                     'confusion',
                                     'high_blood_pressure',
                                     'shock'])
-proba = mlp.predict(df)
-print(proba)
-print(accuracy_score([1,0,0,1,0,1,1,1,1], proba))
+        proba = mlp.predict(df)
+        accuracy = accuracy_score([1,0,0,1,0,1,1,1,1], proba)
+
+        print('Predicted data: ', proba)
+        print('Real data: [1 0 0 1 0 1 1 1 1]')
+        print('Accuracy: %f' % accuracy)
+
+    
+if __name__ == '__main__':
+    ThrombosisPredictor()
+
+
+
