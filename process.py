@@ -15,16 +15,28 @@ class ThrombosisPredictor:
         if answer == 'Y' or answer == 'y':
             X_train, X_test, Y_train, Y_test = self.processRawData()
             maxIteration = int(input('Please enter maximum iteration number: \n'))
-            model = self.fitModel(X_train, X_test, Y_train, Y_test, maxIteration)
-            self.predictExample(model)
+            trainedModel = self.fitModel(X_train, X_test, Y_train, Y_test, maxIteration)
+            self.predictExample(trainedModel)
             saveOrNo = input('Would you like to save the model? Y/n \n')
             if saveOrNo == 'Y' or saveOrNo == 'y':
-                modelname = input('Enter a name for your model: \n')
-                joblib.dump(model, filename=modelname+'.sav')
+                modelName = input('Enter a name for your model: \n')
+                self.saveModel(model=trainedModel, modelName=modelName)
         else:
-            filename = input('Please enter the file name of a saved model: \n')
-            loaded_model = joblib.load(filename)
-            self.predictExample(loaded_model)
+            fileName = input('Please enter the file name of a saved model: \n')
+            loadedModel = self.loadModel(fileName)
+            self.predictExample(loadedModel)
+
+    def saveModel(self, model: MLPClassifier, modelName):
+        currentDirectory = os.getcwd()
+        folderPath = os.path.join(currentDirectory, 'Models')
+        if not os.path.exists(folderPath):
+            os.mkdir(folderPath)
+        joblib.dump(model, filename=os.path.join(folderPath, modelName+'.sav'))
+        
+    def loadModel(self, modelName) -> MLPClassifier:
+        currentDirectory = os.getcwd()
+        folderPath = os.path.join(currentDirectory, 'Models')
+        return joblib.load(filename=os.path.join(folderPath, modelName))
 
     def processRawData(self):
         excelfile = pd.read_csv('files/diag_surg_complic.csv')
