@@ -7,6 +7,7 @@ from sklearn.svm import SVC
 import joblib
 import numpy as np
 import os
+from win10toast import ToastNotifier
 
 class ThrombosisPredictor:
 
@@ -90,6 +91,12 @@ class ThrombosisPredictor:
         conf = confusion_matrix(Y_test, y_prediction)
 
         print(conf)
+        
+        toast = ToastNotifier()
+        toast.show_toast('Model training complete!',
+                         'Model successfully trained with %i iterations.' %maxIteration,
+                         duration=10,
+                         icon_path='success.ico')
         
         return mlp
   
